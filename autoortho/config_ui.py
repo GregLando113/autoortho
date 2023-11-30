@@ -336,6 +336,9 @@ class ConfigUI(object):
 
                 self.update_logs()
                 self.window.refresh()
+        except Exception as e:
+            import traceback
+            log.error(traceback.format_exc())
         finally:
             log.info("GUI exiting...")
             self.stop()
@@ -351,9 +354,12 @@ class ConfigUI(object):
 
 
     def update_logs(self):
-        with open(self.cfg.paths.log_file) as h:
-            lines = h.readlines()[-25:]
-        self.log.update(''.join(lines))
+        try: 
+            with open(self.cfg.paths.log_file) as h:
+                lines = h.readlines()[-25:]
+            self.log.update(''.join(lines))
+        except FileNotFoundError:
+            pass
 
 
     def scenery_setup(self):

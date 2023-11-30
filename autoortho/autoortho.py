@@ -20,6 +20,7 @@ import aostats
 import winsetup
 import config_ui
 import flighttrack
+import subprocess
 
 from version import __version__
 
@@ -163,7 +164,7 @@ class AOMount:
         self.cfg = cfg
         self.mount_threads = []
 
-    def mount_sceneries(self, blocking=True):
+    def mount_sceneries(self, blocking=True, run_xplane=False):
         if not self.cfg.scenery_mounts:
             log.warning(f"No installed sceneries detected.  Exiting.")
             return
@@ -185,7 +186,10 @@ class AOMount:
         if not blocking:
             log.info("Running mounts in non-blocking mode.")
             time.sleep(1)
-            diagnose(self.cfg)
+            if diagnose(self.cfg):
+                if run_xplane:
+                    exe_path = Path(self.cfg.paths.xplane_path,'X-Plane.exe')
+                    proc = subprocess.Popen([exe_path])
             return
 
         try:
@@ -196,10 +200,14 @@ class AOMount:
             
             time.sleep(1)
             # Check things out
-            diagnose(self.cfg)
-
-            while self.mounts_running:
-                time.sleep(1)
+            if diagnose(self.cfg):
+                if run_xplane:
+                    exe_path = Path(self.cfg.paths.xplane_path,'X-Plane.exe')
+                    proc = subprocess.Popen([exe_path])
+                    proc.wait()
+                else:
+                    while self.mounts_running:
+                        time.sleep(1)
 
         except (KeyboardInterrupt, SystemExit) as err:
             self.running = False
@@ -309,6 +317,14 @@ def main():
         action="store_true",
         help = "Run in headless mode."
     )
+    parser.add_argument(
+        "-R",
+        "--run-after-load",
+        default=False,
+        action="store_true",
+        help = "Run X-Plane after autoortho initialization."
+    )
+
 
     args = parser.parse_args()
 
@@ -349,7 +365,7 @@ def main():
     elif run_headless:
         log.info("Running headless")
         aom = AOMount(CFG)
-        aom.mount_sceneries()
+        aom.mount_sceneries(run_xplane=args.run_after_load)
     else:
         log.info("Running CFG UI")
         cfgui = AOMountUI(CFG)
